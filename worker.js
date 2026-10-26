@@ -2,6 +2,7 @@
 import { listIsoFiles } from './lib/iso.js';
 import { createPackage, identifyGame } from './lib/installer.js';
 import { loadModules } from './lib/modules.js';
+import { createDxcPool, poolSize, spawnWebWorker } from './lib/dxc_pool.js';
 
 const base = new URL('./', self.location.href).href;
 const log = (text) => postMessage({ type: 'log', text });
@@ -87,17 +88,25 @@ self.onmessage = async ({ data }) => {
         'USA retail disc, MS-2505.');
     }
     log('Downloading the program and the shader tools');
+    // DXC in several workers (lib/dxc_pool.js); on one thread here if they cannot start.
+    let pool = null;
+    try {
+      pool = await createDxcPool(base, poolSize(), spawnWebWorker);
+    } catch (error) {
+      log(`Shader workers unavailable (${error.message || error}): compiling on one thread`);
+    }
     const [nro, shaderCommon, modules] = await Promise.all([
       build.nro_gz ? fetchGzip(`${base}release/${build.nro_gz}?sha256=${build.nro_sha256}`)
         : fetchBytes(`${base}release/${build.nro}?sha256=${build.nro_sha256}`),
       fetchBytes(`${base}shader_common.h`),
-      loadModules(base, log),
+      loadModules(base, log, { dxc: !pool }),
     ]);
     const nroHash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', nro))]
       .map((b) => b.toString(16).padStart(2, '0')).join('');
     if (nroHash !== build.nro_sha256) {
       throw new Error(`The downloaded program is not the expected one (${nroHash}). Try again later.`);
     }
+    modules.pool = pool;
     const result = await createPackage(files, { manifest, nro, shaderCommon }, modules, sink, log, progress,
       (size) => postMessage({ type: 'size', size }), { update: Boolean(data.update) });
     postMessage({ type: 'done', result });

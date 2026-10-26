@@ -6,6 +6,8 @@ import { pathToFileURL } from 'node:url';
 import { listIsoFiles } from '../lib/iso.js';
 import { createPackage } from '../lib/installer.js';
 import { loadModules } from '../lib/modules.js';
+import { createDxcPool } from '../lib/dxc_pool.js';
+import { Worker } from 'node:worker_threads';
 
 const [source, nroPath, output, flag] = process.argv.slice(2);
 const base = pathToFileURL(path.resolve(path.dirname(new URL(import.meta.url).pathname), '..') + '/').href;
@@ -46,7 +48,17 @@ const out = fs.openSync(output, 'w');
 const sink = { write: async (bytes) => void fs.writeSync(out, bytes), close: async () => fs.closeSync(out) };
 const started = Date.now();
 const log = (t) => console.log(`${((Date.now() - started) / 1000).toFixed(0).padStart(5)} s  ${t}`);
-const modules = await loadModules(base, log);
+// FH1_WORKERS=N: DXC in N worker threads, as the page does (lib/dxc_pool.js); unset: on one thread.
+const workers = Number(process.env.FH1_WORKERS || 0);
+const spawnNodeWorker = (url) => {
+  const worker = new Worker(new URL(url));
+  let handler = () => {};
+  worker.on('message', (m) => handler(m));
+  return { post: (m) => worker.postMessage(m), listen: (h) => (handler = h), stop: () => worker.terminate() };
+};
+const pool = workers ? await createDxcPool(base, workers, spawnNodeWorker) : null;
+const modules = await loadModules(base, log, { dxc: !pool });
+modules.pool = pool;
 log('modules loaded');
 const release = {
   manifest: JSON.parse(fs.readFileSync(new URL('release/manifest.json', base), 'utf8')),
@@ -58,3 +70,4 @@ const result = await createPackage(files, release, modules, sink, log, () => {},
   { update: flag === '--update' });
 const written = fs.statSync(output).size;
 log(`${result.edition}: ${result.shaders} shaders, ${written} bytes (announced ${size}, ${written === size ? 'same' : 'DIFFERENT'})`);
+pool?.close();

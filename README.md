@@ -11,7 +11,9 @@ gives you a zip to extract into `sdmc:/switch/`. It all runs in your browser, so
 2. Downloads the NRO (published gzipped, `release/fh1nx.nro.gz`, so it fits GitHub Pages' file size limit) and checks
    its SHA-256.
 3. Makes the renderer's shader files from your disc with the same steps as the PC build: XenosRecomp, DXC,
-   SPIRV-Cross, banjo-nx's GLSL scripts (under Pyodide) and zstd. Both files have to come out byte for byte the same
+   SPIRV-Cross, banjo-nx's GLSL scripts (under Pyodide) and zstd. DXC, most of the time, runs in several workers at
+   once (`dxc_worker.js`, `lib/dxc_pool.js`: up to 6, by the browser's thread count); in Node, 6 workers took the
+   shaders from 445 s to 132 s. Both files have to come out byte for byte the same
    as the ones the NRO was tested with, or the page stops.
 4. Streams the zip to disk through the service worker, so the ~7 GB zip never has to fit in memory.
 
@@ -29,6 +31,7 @@ fh1-nx/
 
 - `index.html`, `app.js`: the page
 - `worker.js`: builds the package off the main thread
+- `dxc_worker.js`: one shader compile worker (DXC and SPIRV-Cross), several at once
 - `sw.js`: streams the download, keeps the page for offline use
 - `lib/`: disc, XEX, archive and zip code, the shader chain, the package files
 - `wasm/`: the WebAssembly tools, built by FH1-nx's `tools/installer_wasm/` scripts
@@ -44,7 +47,7 @@ FH1NX=../FH1-nx ./fetch_parts.sh                 # wasm/, py/, shader_common.h, 
 cp ../FH1-nx/.local/sd/switch/fh1-nx/fh1nx.nro release/
 gzip -9 -n -k -f release/fh1nx.nro                # release/fh1nx.nro.gz, the one that is published
 python3 serve.py 8193                            # then open http://127.0.0.1:8193/
-node test/package_node.mjs <game .iso or folder> release/fh1nx.nro out.zip
+node test/package_node.mjs <game .iso or folder> release/fh1nx.nro out.zip   # FH1_WORKERS=6 for the worker pool
 ```
 
 A new NRO or new shader files need a new manifest entry (their SHA-256 and sizes; `nro_sha256` is the uncompressed
