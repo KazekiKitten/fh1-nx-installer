@@ -11,7 +11,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FH1NX="${FH1NX:-$HERE/../FH1-nx}"
 PYODIDE_VERSION=314.0.7
 mkdir -p "$HERE/wasm" "$HERE/py" "$HERE/pyodide"
-for m in hlsl dxc spirv_cross zstd lzx; do
+for m in hlsl dxc spirv_cross zstd lzx dksh; do
   cp "$FH1NX/out/installer_wasm/$m.mjs" "$FH1NX/out/installer_wasm/$m.wasm" "$HERE/wasm/"
 done
 cp "$FH1NX/tools/deko3d_glsl.py" "$FH1NX/tools/deko3d_glsl_opt.py" "$FH1NX/tools/installer_wasm/fh1_glsl_web.py" "$HERE/py/"

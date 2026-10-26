@@ -3,6 +3,7 @@ import { listIsoFiles } from './lib/iso.js';
 import { createPackage, identifyGame } from './lib/installer.js';
 import { loadModules } from './lib/modules.js';
 import { createDxcPool, poolSize, spawnWebWorker } from './lib/dxc_pool.js';
+import { buildDkshCache } from './lib/dksh_pool.js';
 
 const base = new URL('./', self.location.href).href;
 const log = (text) => postMessage({ type: 'log', text });
@@ -95,10 +96,11 @@ self.onmessage = async ({ data }) => {
     } catch (error) {
       log(`Shader workers unavailable (${error.message || error}): compiling on one thread`);
     }
-    const [nro, shaderCommon, modules] = await Promise.all([
+    const [nro, shaderCommon, variants, modules] = await Promise.all([
       build.nro_gz ? fetchGzip(`${base}release/${build.nro_gz}?sha256=${build.nro_sha256}`)
         : fetchBytes(`${base}release/${build.nro}?sha256=${build.nro_sha256}`),
       fetchBytes(`${base}shader_common.h`),
+      build.variants ? fetchBytes(`${base}release/${build.variants}`) : Promise.resolve(new Uint8Array()),
       loadModules(base, log, { dxc: !pool }),
     ]);
     const nroHash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', nro))]
@@ -107,7 +109,9 @@ self.onmessage = async ({ data }) => {
       throw new Error(`The downloaded program is not the expected one (${nroHash}). Try again later.`);
     }
     modules.pool = pool;
-    const result = await createPackage(files, { manifest, nro, shaderCommon }, modules, sink, log, progress,
+    // The DKSH cache in as many workers as the DXC pool (they run one after the other).
+    modules.dkshCache = (glsl, list, logLine) => buildDkshCache(base, poolSize(), spawnWebWorker, glsl, list, logLine);
+    const result = await createPackage(files, { manifest, nro, shaderCommon, variants }, modules, sink, log, progress,
       (size) => postMessage({ type: 'size', size }), { update: Boolean(data.update) });
     postMessage({ type: 'done', result });
   } catch (error) {

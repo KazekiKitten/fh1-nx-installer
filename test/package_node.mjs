@@ -7,6 +7,7 @@ import { listIsoFiles } from '../lib/iso.js';
 import { createPackage } from '../lib/installer.js';
 import { loadModules } from '../lib/modules.js';
 import { createDxcPool } from '../lib/dxc_pool.js';
+import { buildDkshCache } from '../lib/dksh_pool.js';
 import { Worker } from 'node:worker_threads';
 
 const [source, nroPath, output, flag] = process.argv.slice(2);
@@ -59,11 +60,15 @@ const spawnNodeWorker = (url) => {
 const pool = workers ? await createDxcPool(base, workers, spawnNodeWorker) : null;
 const modules = await loadModules(base, log, { dxc: !pool });
 modules.pool = pool;
+// The DKSH cache in FH1_WORKERS workers (1 without the variable).
+modules.dkshCache = (glsl, list, logLine) => buildDkshCache(base, workers || 1, spawnNodeWorker, glsl, list, logLine);
 log('modules loaded');
 const release = {
   manifest: JSON.parse(fs.readFileSync(new URL('release/manifest.json', base), 'utf8')),
   nro: new Uint8Array(fs.readFileSync(nroPath)),
   shaderCommon: new Uint8Array(fs.readFileSync(new URL('shader_common.h', base))),
+  variants: fs.existsSync(new URL('release/fh1_variants.txt', base))
+    ? new Uint8Array(fs.readFileSync(new URL('release/fh1_variants.txt', base))) : new Uint8Array(),
 };
 let size = 0;
 const result = await createPackage(files, release, modules, sink, log, () => {}, (s) => (size = s),

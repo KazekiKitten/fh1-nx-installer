@@ -15,7 +15,11 @@ gives you a zip to extract into `sdmc:/switch/`. It all runs in your browser, so
    once (`dxc_worker.js`, `lib/dxc_pool.js`: up to 6, by the browser's thread count); in Node, 6 workers took the
    shaders from 445 s to 132 s. Both files have to come out byte for byte the same
    as the ones the NRO was tested with, or the page stops.
-4. Streams the zip to disk through the service worker, so the ~7 GB zip never has to fit in memory.
+4. Compiles the renderer's shader cache (`shadercache_dksh.bin`) with FH1-nx's `dksh_precompile` and uam built for
+   WebAssembly (`dksh_worker.js`, `lib/dksh_pool.js`): every shader in the variants the renderer asks for, plus the
+   ones a console run listed (`release/fh1_variants.txt`). Without it the Switch compiles each one the first time
+   it is needed (seconds each, and what uses it is not drawn meanwhile). Checked against the manifest too.
+5. Streams the zip to disk through the service worker, so the ~7 GB zip never has to fit in memory.
 
 The zip:
 
@@ -24,6 +28,7 @@ fh1-nx/
   fh1nx.nro
   deko3d_glsl.bin
   fh1_shaders.nfsspv
+  shadercache_dksh.bin
   game_root/          (skipped with "Update only")
 ```
 

@@ -37,7 +37,10 @@
           "words": 24
         }
       ],
-      "nro_gz": "fh1nx.nro.gz"
+      "nro_gz": "fh1nx.nro.gz",
+      "variants": "fh1_variants.txt",
+      "dksh_sha256": "6edcea442d2bd3096114dccb5faad0889272580bfe542e3bf966a6fefc5960dd",
+      "dksh_size": 38837336
     }
   ]
 }
