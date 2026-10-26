@@ -2,3 +2,5 @@ release/*.nro
 node_modules/
 *.zip
 __pycache__/
+# Pyodide's standard library is part of the page (the *.zip rule above is for made packages).
+!pyodide/python_stdlib.zip
