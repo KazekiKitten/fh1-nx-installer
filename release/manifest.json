@@ -1,0 +1,43 @@
+{
+  "version": "0.1.0",
+  "builds": [
+    {
+      "edition": "USA (MS-2505)",
+      "xex_sha256": "db40df605ade49a612b35a7a24c38f6004bcb17a88ed6b48288de16df9e3987c",
+      "nro": "fh1nx.nro",
+      "nro_sha256": "680b96c42f0bdbf597639c00b54033efd8c230b2bfbe86a06096cd8b58bcdace",
+      "nro_size": 120404165,
+      "glsl_sha256": "4eadce81eb63e2acf96922c7c6be98c13a53f3f5688d35b7b1f2dd2e23b03077",
+      "glsl_size": 3875352,
+      "library_sha256": "b51f8c202012c396bd25e903f7ae98e2ef00074cbc119ccff4dfa9681931e668",
+      "library_size": 6732928,
+      "d3d_programs": [
+        {
+          "hash": "A4A965C189287B99",
+          "vertex": false,
+          "offset": 810296,
+          "words": 9
+        },
+        {
+          "hash": "1E6883FCCDE1F688",
+          "vertex": true,
+          "offset": 810960,
+          "words": 27
+        },
+        {
+          "hash": "AB1E86137A0240E8",
+          "vertex": true,
+          "offset": 812024,
+          "words": 15
+        },
+        {
+          "hash": "B6C9863F710683EC",
+          "vertex": true,
+          "offset": 810200,
+          "words": 24
+        }
+      ],
+      "nro_gz": "fh1nx.nro.gz"
+    }
+  ]
+}

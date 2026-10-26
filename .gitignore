@@ -1,0 +1,4 @@
+release/*.nro
+node_modules/
+*.zip
+__pycache__/

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FH1-nx installer</title>
+<style>
+  :root { --bg: #fafafa; --fg: #1a1a1a; --muted: #666; --line: #ddd; --accent: #1f6feb; --bad: #c62828; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #161616; --fg: #e8e8e8; --muted: #9a9a9a; --line: #333; --accent: #4c8dff; --bad: #ef5350; }
+  }
+  body { background: var(--bg); color: var(--fg); font: 16px/1.5 system-ui, sans-serif; margin: 0; }
+  main { max-width: 720px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 1.6em; margin: 0 0 4px; }
+  p { margin: 8px 0; }
+  .muted { color: var(--muted); }
+  fieldset { border: 1px solid var(--line); border-radius: 6px; margin: 16px 0; padding: 12px 16px; }
+  label { display: block; margin: 6px 0; }
+  button { font: inherit; padding: 8px 16px; border-radius: 6px; border: 0; background: var(--accent); color: #fff; cursor: pointer; }
+  button:disabled { opacity: 0.5; cursor: default; }
+  progress { width: 100%; height: 12px; margin: 12px 0 4px; }
+  #log { background: var(--line); border-radius: 6px; padding: 8px 12px; font: 13px/1.4 ui-monospace, monospace;
+         white-space: pre-wrap; max-height: 260px; overflow: auto; margin-top: 8px; }
+  #log:empty { display: none; }
+  .error { color: var(--bad); font-weight: 600; }
+  pre { background: var(--line); border-radius: 6px; padding: 8px 12px; overflow-x: auto; font-size: 13px; }
+  code { font-family: ui-monospace, monospace; }
+</style>
+</head>
+<body>
+<main>
+  <h1>FH1-nx installer</h1>
+  <p class="muted">Makes the FH1-nx package from your own copy of Forza Horizon. Everything runs in this browser: your
+    game files never get uploaded anywhere.</p>
+
+  <fieldset>
+    <legend>Your game</legend>
+    <p>You need the USA retail disc (MS-2505), as an ISO or as the extracted folder with <code>default.xex</code> and
+      <code>media</code>.</p>
+    <label><input type="radio" name="kind" value="iso" checked> Disc image (.iso)</label>
+    <label><input type="radio" name="kind" value="folder"> Extracted folder</label>
+    <p><input type="file" id="iso" accept=".iso"><input type="file" id="folder" webkitdirectory hidden></p>
+    <label><input type="checkbox" id="update"> Update only (new program and shaders, no game files: for an install
+      that already has <code>game_root</code>)</label>
+  </fieldset>
+
+  <p><button id="start" disabled>Create fh1-nx.zip</button></p>
+  <progress id="progress" max="1" value="0" hidden></progress>
+  <p id="status" class="muted"></p>
+  <div id="log"></div>
+
+  <h2>Then</h2>
+  <p>Extract the zip into <code>sdmc:/switch/</code>. You should end up with:</p>
+  <pre>/switch/fh1-nx/
+  fh1nx.nro
+  deko3d_glsl.bin       (shaders, made from your disc)
+  fh1_shaders.nfsspv    (shaders, made from your disc)
+  game_root/            (your game files)</pre>
+  <p>Start it with a title override (hold R while launching a game) or a forwarder set to a 39-bit address space.
+    Album/applet mode doesn't have enough memory. <code>fh1nx.toml</code> (settings) gets written on the first start.</p>
+  <p class="muted">Making the shaders takes a few minutes, then the game files are copied into the zip (about 7 GB).
+    Keep this tab open until the download finishes. Works best in Chrome or Edge on a computer.</p>
+
+  <p class="muted">FH1-nx is an unofficial fan project, not affiliated with Microsoft, Playground Games or Turn 10.
+    It contains no game files. Source: GPL-3.0.</p>
+</main>
+<script type="module" src="app.js"></script>
+</body>
+</html>
