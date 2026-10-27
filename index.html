@@ -53,16 +53,17 @@
   <p>Extract the zip into <code>sdmc:/switch/</code>. You should end up with:</p>
   <pre>/switch/fh1-nx/
   fh1nx.nro
-  deko3d_glsl.bin       (shaders, made from your disc)
-  fh1_shaders.nfsspv    (shaders, made from your disc)
+  deko3d_glsl.bin       (shaders)
+  fh1_shaders.nfsspv    (shaders)
+  shadercache_dksh.bin  (the shaders, compiled for the Switch)
   game_root/            (your game files)</pre>
   <p>Start it with a title override (hold R while launching a game) or a forwarder set to a 39-bit address space.
     Album/applet mode doesn't have enough memory. <code>fh1nx.toml</code> (settings) gets written on the first start.</p>
-  <p class="muted">Making the shaders takes a few minutes, then the game files are copied into the zip (about 7 GB).
-    Keep this tab open until the download finishes. Works best in Chrome or Edge on a computer.</p>
+  <p class="muted">The game files are copied into the zip (about 7 GB) as it downloads. Keep this tab open until the
+    download finishes. Works best in Chrome or Edge on a computer.</p>
 
   <p class="muted">FH1-nx is an unofficial fan project, not affiliated with Microsoft, Playground Games or Turn 10.
-    It contains no game files. Source: GPL-3.0.</p>
+    The game files come from your own copy. Source: <a href="https://github.com/KazekiKitten/fh1-nx">github.com/KazekiKitten/fh1-nx</a> (GPL-3.0).</p>
 </main>
 <script type="module" src="app.js"></script>
 </body>

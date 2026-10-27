@@ -1,9 +1,6 @@
 // Makes the package off the main thread and streams the zip to the download (sw.js) through a MessagePort.
 import { listIsoFiles } from './lib/iso.js';
-import { createPackage, identifyGame } from './lib/installer.js';
-import { loadModules } from './lib/modules.js';
-import { createDxcPool, poolSize, spawnWebWorker } from './lib/dxc_pool.js';
-import { buildDkshCache } from './lib/dksh_pool.js';
+import { SHADER_FILES, checkFile, createPackage, identifyGame } from './lib/installer.js';
 
 const base = new URL('./', self.location.href).href;
 const log = (text) => postMessage({ type: 'log', text });
@@ -17,7 +14,8 @@ async function fetchBytes(url) {
   return new Uint8Array(await response.arrayBuffer());
 }
 
-// A gzipped file, decompressed by the browser. The NRO is published gzipped: GitHub Pages serves files under 100 MB,
+// A gzipped file, decompressed by the browser. The NRO and the shader files are published gzipped: GitHub Pages serves
+// files under 100 MB,
 // and a GitHub release asset cannot be fetched by a page (its redirect has no CORS header).
 async function fetchGzip(url) {
   const response = await fetch(url);
@@ -88,30 +86,20 @@ self.onmessage = async ({ data }) => {
       throw new Error(`This copy of the game is not supported (default.xex SHA-256 ${xexHash}). FH1-nx needs the ` +
         'USA retail disc, MS-2505.');
     }
-    log('Downloading the program and the shader tools');
-    // DXC in several workers (lib/dxc_pool.js); on one thread here if they cannot start.
-    let pool = null;
-    try {
-      pool = await createDxcPool(base, poolSize(), spawnWebWorker);
-    } catch (error) {
-      log(`Shader workers unavailable (${error.message || error}): compiling on one thread`);
-    }
-    const [nro, shaderCommon, variants, modules] = await Promise.all([
-      build.nro_gz ? fetchGzip(`${base}release/${build.nro_gz}?sha256=${build.nro_sha256}`)
-        : fetchBytes(`${base}release/${build.nro}?sha256=${build.nro_sha256}`),
-      fetchBytes(`${base}shader_common.h`),
-      build.variants ? fetchBytes(`${base}release/${build.variants}`) : Promise.resolve(new Uint8Array()),
-      loadModules(base, log, { dxc: !pool }),
+    log('Downloading the program and its shaders');
+    // `?sha256=` keeps each file in the service worker's program cache (sw.js) until the release changes it.
+    const [nro, ...shaderBytes] = await Promise.all([
+      fetchGzip(`${base}release/${build.nro_gz}?sha256=${build.nro_sha256}`),
+      ...SHADER_FILES.map((f) => fetchGzip(`${base}release/${build[f.gz]}?sha256=${build[f.sha256]}`)),
     ]);
-    const nroHash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', nro))]
-      .map((b) => b.toString(16).padStart(2, '0')).join('');
-    if (nroHash !== build.nro_sha256) {
-      throw new Error(`The downloaded program is not the expected one (${nroHash}). Try again later.`);
+    await checkFile('program', nro, build.nro_sha256, build.nro_size);
+    const shaders = {};
+    for (const [i, f] of SHADER_FILES.entries()) {
+      await checkFile(f.name, shaderBytes[i], build[f.sha256], build[f.size]);
+      shaders[f.name] = shaderBytes[i];
     }
-    modules.pool = pool;
-    // The DKSH cache in as many workers as the DXC pool (they run one after the other).
-    modules.dkshCache = (glsl, list, logLine) => buildDkshCache(base, poolSize(), spawnWebWorker, glsl, list, logLine);
-    const result = await createPackage(files, { manifest, nro, shaderCommon, variants }, modules, sink, log, progress,
+    log('Program and shaders: checked');
+    const result = await createPackage(files, { manifest, nro, shaders }, sink, log, progress,
       (size) => postMessage({ type: 'size', size }), { update: Boolean(data.update) });
     postMessage({ type: 'done', result });
   } catch (error) {

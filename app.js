@@ -117,7 +117,7 @@ startButton.addEventListener('click', async () => {
       document.body.appendChild(downloadFrame);
       log(`Download started (${formatSize(data.size)})`);
     } else if (data.type === 'done') {
-      finish(`Done: ${data.result.shaders} shaders made. Extract fh1-nx.zip into sdmc:/switch/.`);
+      finish('Done. Extract fh1-nx.zip into sdmc:/switch/.');
     } else if (data.type === 'error') {
       log(data.message, true);
       finish('Something went wrong (see above).', true);

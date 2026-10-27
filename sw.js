@@ -2,7 +2,7 @@
 // memory stays bounded at any size), and keeps the page and the program for use without a connection.
 // Based on nfsmw-nx-installer's sw.js (GPL-3.0).
 
-const PAGE_CACHE = 'fh1-nx-page-v1';
+const PAGE_CACHE = 'fh1-nx-page-v2';  // v2: the in-browser shader tools are gone
 const PROGRAM_CACHE = 'fh1-nx-programs';
 const NETWORK_WAIT = 4000;
 

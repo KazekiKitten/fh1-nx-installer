@@ -1,17 +1,14 @@
-// Makes the package with the page's code in Node, from a disc image or an extracted folder.
-//   node test/package_node.mjs <game .iso | game folder> <fh1nx.nro> <output .zip> [--update]
+// Makes the package with the page's code in Node, from a disc image or an extracted folder, with the program and
+// shader files of release/ (the gzipped ones the page downloads, checked against release/manifest.json).
+//   node test/package_node.mjs <game .iso | game folder> <output .zip> [--update]
 import fs from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import zlib from 'node:zlib';
 import { listIsoFiles } from '../lib/iso.js';
-import { createPackage } from '../lib/installer.js';
-import { loadModules } from '../lib/modules.js';
-import { createDxcPool } from '../lib/dxc_pool.js';
-import { buildDkshCache } from '../lib/dksh_pool.js';
-import { Worker } from 'node:worker_threads';
+import { SHADER_FILES, checkFile, createPackage, identifyGame } from '../lib/installer.js';
 
-const [source, nroPath, output, flag] = process.argv.slice(2);
-const base = pathToFileURL(path.resolve(path.dirname(new URL(import.meta.url).pathname), '..') + '/').href;
+const [source, output, flag] = process.argv.slice(2);
+const release = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', 'release');
 
 function fileReader(fd) {
   return async (offset, length) => {
@@ -45,34 +42,26 @@ if (fs.statSync(source).isDirectory()) {
   });
 }
 
+const manifest = JSON.parse(fs.readFileSync(path.join(release, 'manifest.json'), 'utf8'));
+const { build, xexHash } = await identifyGame(files, manifest);
+if (!build) {
+  throw new Error(`default.xex ${xexHash} is not in the manifest`);
+}
+const gunzip = (name) => new Uint8Array(zlib.gunzipSync(fs.readFileSync(path.join(release, name))));
+const nro = gunzip(build.nro_gz);
+await checkFile('program', nro, build.nro_sha256, build.nro_size);
+const shaders = {};
+for (const f of SHADER_FILES) {
+  shaders[f.name] = gunzip(build[f.gz]);
+  await checkFile(f.name, shaders[f.name], build[f.sha256], build[f.size]);
+}
+
 const out = fs.openSync(output, 'w');
 const sink = { write: async (bytes) => void fs.writeSync(out, bytes), close: async () => fs.closeSync(out) };
 const started = Date.now();
 const log = (t) => console.log(`${((Date.now() - started) / 1000).toFixed(0).padStart(5)} s  ${t}`);
-// FH1_WORKERS=N: DXC in N worker threads, as the page does (lib/dxc_pool.js); unset: on one thread.
-const workers = Number(process.env.FH1_WORKERS || 0);
-const spawnNodeWorker = (url) => {
-  const worker = new Worker(new URL(url));
-  let handler = () => {};
-  worker.on('message', (m) => handler(m));
-  return { post: (m) => worker.postMessage(m), listen: (h) => (handler = h), stop: () => worker.terminate() };
-};
-const pool = workers ? await createDxcPool(base, workers, spawnNodeWorker) : null;
-const modules = await loadModules(base, log, { dxc: !pool });
-modules.pool = pool;
-// The DKSH cache in FH1_WORKERS workers (1 without the variable).
-modules.dkshCache = (glsl, list, logLine) => buildDkshCache(base, workers || 1, spawnNodeWorker, glsl, list, logLine);
-log('modules loaded');
-const release = {
-  manifest: JSON.parse(fs.readFileSync(new URL('release/manifest.json', base), 'utf8')),
-  nro: new Uint8Array(fs.readFileSync(nroPath)),
-  shaderCommon: new Uint8Array(fs.readFileSync(new URL('shader_common.h', base))),
-  variants: fs.existsSync(new URL('release/fh1_variants.txt', base))
-    ? new Uint8Array(fs.readFileSync(new URL('release/fh1_variants.txt', base))) : new Uint8Array(),
-};
 let size = 0;
-const result = await createPackage(files, release, modules, sink, log, () => {}, (s) => (size = s),
+const result = await createPackage(files, { manifest, nro, shaders }, sink, log, () => {}, (s) => (size = s),
   { update: flag === '--update' });
 const written = fs.statSync(output).size;
-log(`${result.edition}: ${result.shaders} shaders, ${written} bytes (announced ${size}, ${written === size ? 'same' : 'DIFFERENT'})`);
-pool?.close();
+log(`${result.edition}: ${result.files} game files, ${written} bytes (announced ${size}, ${written === size ? 'same' : 'DIFFERENT'})`);
