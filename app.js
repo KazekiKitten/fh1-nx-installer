@@ -75,12 +75,14 @@ startButton.addEventListener('click', async () => {
   if (!picked) {
     return;
   }
-  let controller;
   try {
-    controller = await helper;
+    await helper;
   } catch {
     return;
   }
+  // The helper that controls the page now: a new sw.js installed after the page loaded replaces the one there was
+  // then, and a message to the replaced one is never answered.
+  const current = () => navigator.serviceWorker.controller;
   startButton.disabled = true;
   logBox.textContent = '';
   $('progress').hidden = false;
@@ -89,7 +91,7 @@ startButton.addEventListener('click', async () => {
 
   const worker = new Worker('./worker.js', { type: 'module' });
   const channel = new MessageChannel();
-  const keepAlive = setInterval(() => controller.postMessage({ type: 'ping' }), 10000);
+  const keepAlive = setInterval(() => current()?.postMessage({ type: 'ping' }), 10000);
   const finish = (text, error = false) => {
     clearInterval(keepAlive);
     worker.terminate();
@@ -107,8 +109,20 @@ startButton.addEventListener('click', async () => {
       const filename = 'fh1-nx.zip';
       const ack = new MessageChannel();
       const registered = new Promise((resolve) => (ack.port1.onmessage = resolve));
+      const controller = current();
+      if (!controller) {
+        log('The download helper is not running. Reload the page (F5) and try again.', true);
+        finish('Something went wrong (see above).', true);
+        return;
+      }
       controller.postMessage({ type: 'download', id, filename, size: data.size }, [channel.port2, ack.port2]);
-      await registered;
+      const answered = await Promise.race([registered.then(() => true),
+        new Promise((resolve) => setTimeout(() => resolve(false), 10000))]);
+      if (!answered) {
+        log('The download helper did not answer. Reload the page (F5) and try again.', true);
+        finish('Something went wrong (see above).', true);
+        return;
+      }
       // A hidden frame opens the download: a navigation always reaches the service worker.
       downloadFrame?.remove();
       downloadFrame = document.createElement('iframe');
